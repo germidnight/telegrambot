@@ -1,7 +1,7 @@
+#include "logger.h"
 #include "geocode.h"
 
 #include <format>
-#include <iostream>
 #include <string>
 
 
@@ -81,7 +81,7 @@ std::optional<GeoInfo> Geocode::GetPosition(const std::string& town) const {
         }
         client_->Disconnect();
     } catch (const std::exception& err) {
-        std::cerr << "Geocode::GetPosition. Error: " << err.what() << std::endl;
+        logger::LogError(err.what(), "Geocode::GetPosition");
         return std::nullopt;
     }
     return std::nullopt;

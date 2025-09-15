@@ -1,3 +1,4 @@
+#include "logger.h"
 #include "meteobot.h"
 
 #include <boost/algorithm/string.hpp>
@@ -6,7 +7,6 @@
 #include <boost/url/rfc/pchars.hpp>
 #include <cmath>
 #include <format>
-#include <iostream>
 
 namespace meteo {
 
@@ -116,7 +116,7 @@ std::string MeteoBot::GetWeather(std::string town) {
         try {
             UpdateWeather(enc_town);
         } catch (const std::exception& err) {
-            std::cerr << "MeteoBot::GetWeather. Error: " << err.what() << std::endl;
+            logger::LogError(err.what(), "MeteoBot::GetWeather");
             return "Ошибка получения прогноза погоды";
         }
     }

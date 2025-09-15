@@ -1,6 +1,7 @@
 #pragma once
 /*
- *
+ * Получение координат и текстового описания города по названию
+ * Используется API geocode-maps.yandex.ru
  */
 #include "httpssyncclient.h"
 

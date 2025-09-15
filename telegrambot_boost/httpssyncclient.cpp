@@ -1,6 +1,7 @@
+#include "logger.h"
 #include "httpssyncclient.h"
 
-#include <iostream>
+#include <sstream>
 
 namespace https_sync {
 
@@ -16,7 +17,7 @@ void CheckSSLShutdownError(boost::system::error_code ec) {
     if (ec == asio::ssl::error::stream_truncated) {
         ec.assign(0, ec.category());
     } else if (ec) {
-        std::cerr << "HttpsSyncClient. Error while shutdown: " << ec << std::endl;
+        logger::LogError(std::string("Ошибка при выключении: ") + ec.to_string(), "HttpsSyncClient");
     }
 }
 }
@@ -49,28 +50,29 @@ void HttpsSyncClient::Connect(const std::string& host) {
     auto const results = resolver.resolve(host_, port);
     beast::get_lowest_layer(*stream_).connect(results);
     stream_->handshake(ssl::stream_base::client);
-    std::cout << "HttpsSyncClient::Connect. Connected to " << host_ << std::endl;
+
+    logger::LogInfo(std::string("Connected to ") + host_, "HttpsSyncClient::Connect");
 }
 
 void HttpsSyncClient::Disconnect() {
     boost::system::error_code ec;
     stream_->shutdown(ec);
-    std::cout << "HttpsSyncClient::Disconnect. Disconnected from " << host_ << std::endl;
+    logger::LogInfo(std::string("Disconnected from ") + host_, "HttpsSyncClient::Disconnect");
     CheckSSLShutdownError(ec);
 }
 
 std::string HttpsSyncClient::Exchange(RequestType req) {
 #ifdef Q_OS_WINDOWS
     if (!stream_->lowest_layer().is_open()) {
-        std::cerr << "HttpsSyncClient::Exchange. Нет подключения к серверу " << host_ << std::endl;
+        logger::LogError(std::string("Нет подключения к серверу ") + host_, "HttpsSyncClient::Exchange");
         return {};
     }
 #endif
 #ifdef Q_OS_LINUX
     if (!stream_->next_layer().is_open()) {
-            std::cerr << "HttpsSyncClient::Exchange. Нет подключения к серверу " << host_ << std::endl;
-            return {};
-        }
+        logger::LogError(std::string("Нет подключения к серверу ") + host_, "HttpsSyncClient::Exchange");
+        return {};
+    }
 #endif
     req.set(http::field::user_agent, BOOST_BEAST_VERSION_STRING);
     http::write(*stream_, req);
@@ -82,7 +84,9 @@ std::string HttpsSyncClient::Exchange(RequestType req) {
     if (res.result() == http::status::ok) {
         return res.body();
     } else {
-        std::cerr << "HttpsSyncClient::Exchange. Пришёл неверный ответ от сервера " << res << std::endl;
+        std::stringstream ss;
+        ss << "Пришёл неверный ответ от сервера:\n" << res;
+        logger::LogError(ss.str(), "HttpsSyncClient::Exchange");
         return {};
     }
 }

@@ -1,7 +1,8 @@
+#include "logger.h"
 #include "httpsclient.h"
 
 #include <chrono>
-#include <iostream>
+#include <sstream>
 
 namespace https_client {
 
@@ -17,7 +18,7 @@ void CheckSSLShutdownError(boost::system::error_code ec) {
     if (ec == asio::ssl::error::stream_truncated) {
         ec.assign(0, ec.category());
     } else if (ec) {
-        std::cerr << "HttpsClient. Error while shutdown: " << ec << std::endl;
+        logger::LogError(std::string("Ошибка при выключении: ") + ec.to_string(), "HttpsClient");
     }
 }
 
@@ -49,14 +50,15 @@ boost::asio::awaitable<void> HttpsClient::Connect(const std::string& host) {
 
     boost::beast::get_lowest_layer(*stream_).expires_after(std::chrono::seconds(TIMEOUT));
     co_await stream_->async_handshake(asio::ssl::stream_base::client, boost::asio::use_awaitable);
-    std::cout << "HttpsClient::Connect. Connected to " << host_ << std::endl;
+
+    logger::LogInfo(std::string("Connected to ") + host_, "HttpsClient::Connect");
     co_return;
 }
 
 void HttpsClient::Disconnect() {
     boost::system::error_code ec;
     stream_->shutdown(ec);
-    std::cout << "HttpsClient::Disconnect. Disconnected from " << host_ << std::endl;
+    logger::LogInfo(std::string("Disconnected from ") + host_, "HttpsClient::Connect");
     CheckSSLShutdownError(ec);
 }
 
@@ -67,13 +69,13 @@ bool HttpsClient::IsConnected() const noexcept {
 boost::asio::awaitable<std::string> HttpsClient::Exchange(http::request<http::string_body> req) {
 #ifdef Q_OS_WINDOWS
     if (!stream_->lowest_layer().is_open()) {
-        std::cerr << "HttpsClient::Exchange. Нет подключения к серверу " << host_ << std::endl;
+        logger::LogError(std::string("Нет подключения к серверу ") + host_, "HttpsClient::Exchange");
         co_return std::string{};
     }
 #endif
 #ifdef Q_OS_LINUX
-        if (!stream_->next_layer().is_open()) {
-        std::cerr << "HttpsClient::Exchange. Нет подключения к серверу " << host_ << std::endl;
+    if (!stream_->next_layer().is_open()) {
+        logger::LogError(std::string("Нет подключения к серверу ") + host_, "HttpsClient::Exchange");
         co_return std::string{};
     }
 #endif
@@ -87,7 +89,9 @@ boost::asio::awaitable<std::string> HttpsClient::Exchange(http::request<http::st
     if (res.result() == http::status::ok) {
         co_return res.body();
     } else {
-        std::cerr << "HttpsClient::Exchange. Пришёл неверный ответ от сервера " << res << std::endl;
+        std::stringstream ss;
+        ss << "Пришёл неверный ответ от сервера:\n" << res;
+        logger::LogError(ss.str(), "HttpsClient::Exchange");
     }
     co_return std::string{};
 }

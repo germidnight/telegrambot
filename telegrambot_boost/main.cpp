@@ -2,18 +2,20 @@
  * Погодный телеграмм бот
  * - телеграмм бот выполняется асинхронно
  * - запросы погоды в городах выполняются синхронно
+ * - логируются: ошибки и подключение/отключение от сетевых ресурсов
  *
  * TODO:
- * 1) Сделать нормальное логирование
- * 2) Сделать асинхронными запросы погоды
+ * 1) Сделать асинхронными запросы погоды
  */
+#include "logger.h"
 #include "meteobot.h"
 #include "telegrambot.h"
 
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/signal_set.hpp>
+#include <boost/log/utility/setup/file.hpp>
 #include <csignal>
-#include <iostream>
+#include <ios>
 #include <memory>
 #include <string>
 #include <utility>
@@ -30,6 +32,21 @@ struct WeatherGet {
 
 int main() {
     const std::string telegramm_token{"here_must_be_your_telegram_bot_token"};
+
+    boost::log::add_console_log(
+        std::clog,
+        boost::log::keywords::format = &(logger::LogFormatter),
+        boost::log::keywords::auto_flush = true
+    );
+
+    boost::log::add_file_log(
+        boost::log::keywords::file_name = "telegrambot_%N.log",
+        boost::log::keywords::format = &(logger::LogFormatter),
+        boost::log::keywords::open_mode = std::ios_base::app | std::ios_base::out,
+        boost::log::keywords::rotation_size = 10 * 1024 * 1024,
+        boost::log::keywords::time_based_rotation = boost::log::sinks::file::rotation_at_time_point(12, 0, 0),
+        boost::log::keywords::auto_flush = true
+    );
 
     boost::asio::io_context ioc;
 
@@ -52,7 +69,7 @@ int main() {
         ioc.run();
 
     } catch(const std::exception& err) {
-        std::cerr << "MAIN. Error: " << err.what() << std::endl;
+        logger::LogError(err.what(), "main");
         return EXIT_FAILURE;
     }
 

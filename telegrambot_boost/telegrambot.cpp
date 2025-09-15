@@ -1,6 +1,6 @@
+#include "logger.h"
 #include "telegrambot.h"
 
-#include <iostream>
 #include <utility>
 
 #include <boost/beast.hpp>
@@ -30,7 +30,8 @@ std::pair<ResponseResults, int64_t> ResponseProcess(const boost::json::object& m
     const std::string base_town{"Казань"};
 
     if (!msg.at(OK_FIELD).as_bool()) {
-        std::cerr << "Request failure. RESPONSE: " << json::serialize(msg) << std::endl;
+        logger::LogError(std::string("Request failure. RESPONSE: ") + json::serialize(msg),
+                         "TelegramBot. ResponseProcess");
         return {};
     }
     if (!msg.contains(RESULT_FIELD) || !msg.at(RESULT_FIELD).is_array()) {
@@ -96,7 +97,8 @@ boost::asio::awaitable<void> TelegramBot::Reconnect() {
 boost::asio::awaitable<void> TelegramBot::Start() {
     constexpr static char OFFSET_FIELD[]{"offset"};
     if (!client_->IsConnected()) {
-        std::cerr << "TelegramBot::Start. Must be connected before running start" << std::endl;
+        logger::LogError(std::string("Must be connected before running start"),
+                         "TelegramBot::Start");
         co_return;
     }
     do_work_ = true;
@@ -116,12 +118,13 @@ boost::asio::awaitable<void> TelegramBot::Start() {
             for (const auto& [chat_id, town] : answer) {
                 auto [it, is_inserted] = chats_.insert(chat_id);
                 if (is_inserted) {
-                    std::cout << "New chat created: " << *it << std::endl;
+                    logger::LogInfo(std::string("New chat created: ") + *it,
+                                    "TelegramBot::Start");
                 }
                 co_await SendMessage(chat_id, callback_(std::string(town)));
             }
         } catch (const std::exception& err) {
-            std::cerr << "TelegramBot::Start. Error: " << err.what() << std::endl;
+            logger::LogError(err.what(), "TelegramBot::Start");
         }
     }
 }
