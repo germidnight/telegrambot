@@ -1,6 +1,5 @@
 #include "telegrambot.h"
 
-#include <chrono>
 #include <iostream>
 #include <utility>
 
@@ -84,7 +83,6 @@ boost::asio::awaitable<void> TelegramBot::Connect() {
 boost::asio::awaitable<void> TelegramBot::Reconnect() {
     using namespace std::chrono_literals;
     client_->Disconnect();
-    std::this_thread::sleep_for(2000ms);
     co_await Connect();
     co_return;
 }
